@@ -6,3 +6,8 @@ node_modules
 /.mf
 .env
 .shopify
+
+# Environment variables (NEVER COMMIT)
+.env
+.env.local
+.env.*.local
