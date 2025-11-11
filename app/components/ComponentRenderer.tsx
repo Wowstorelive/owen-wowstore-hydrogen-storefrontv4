@@ -21,6 +21,8 @@ import { ShippingProgressBar } from './components/ShippingProgressBar';
 import { ExitIntentPopup } from './components/ExitIntentPopup';
 import { InstagramShopFeed } from './components/InstagramShopFeed';
 import { TikTokShopFeed } from './components/TikTokShopFeed';
+import { AIOutfitIdeas } from './components/AIOutfitIdeas';
+import { AISaleOfTheDay } from './components/AISaleOfTheDay';
 
 interface ComponentRendererProps {
   component: Component;
@@ -43,6 +45,8 @@ const componentMap: Record<string, React.ComponentType<any>> = {
   'exit-intent-popup': ExitIntentPopup,
   'instagram-shop-feed': InstagramShopFeed,
   'tiktok-shop-feed': TikTokShopFeed,
+  'ai-outfit-ideas': AIOutfitIdeas,
+  'ai-sale-of-the-day': AISaleOfTheDay,
 };
 
 export function ComponentRenderer({ component, config, colorSchemes }: ComponentRendererProps) {
