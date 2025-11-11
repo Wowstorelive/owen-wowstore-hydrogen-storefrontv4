@@ -1,11 +1,22 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { ComponentRenderer } from '~/components/ComponentRenderer';
+
+interface FunnelStageComponent {
+  slug: string;
+  name: string;
+  type: string;
+  props: any;
+}
 
 interface FunnelStageProps {
   stage: {
     id: string;
     name: string;
-    type: 'quiz' | 'product' | 'upsell' | 'checkout';
+    type: 'quiz' | 'product' | 'upsell' | 'checkout' | string;
+    headline?: string;
+    subheadline?: string;
+    components?: FunnelStageComponent[];
     content: any;
   };
   funnel: {
@@ -31,6 +42,28 @@ export function FunnelStage({
   isLast,
 }: FunnelStageProps) {
   const renderStageContent = () => {
+    // If stage has CMS components, render them dynamically
+    if (stage.components && stage.components.length > 0) {
+      return (
+        <div className="space-y-8">
+          {stage.components.map((component, index) => (
+            <div key={`${component.slug}-${index}`}>
+              <ComponentRenderer
+                component={{
+                  slug: component.slug,
+                  name: component.name,
+                  component_type: component.type,
+                } as any}
+                config={component.props || {}}
+                colorSchemes={[]}
+              />
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // Fallback to legacy switch statement for backwards compatibility
     switch (stage.type) {
       case 'quiz':
         return <QuizStage content={stage.content} onComplete={onNext} />;
@@ -64,12 +97,14 @@ export function FunnelStage({
             className="text-center mb-12"
           >
             <h2 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              {stage.name}
+              {stage.headline || stage.name}
             </h2>
-            <div className="flex items-center justify-center gap-2 text-gray-600">
-              <Sparkles className="w-5 h-5" />
-              <span>Personalized just for you</span>
-            </div>
+            {stage.subheadline && (
+              <div className="flex items-center justify-center gap-2 text-gray-600">
+                <Sparkles className="w-5 h-5" />
+                <span>{stage.subheadline}</span>
+              </div>
+            )}
           </motion.div>
 
           {/* Stage Content */}

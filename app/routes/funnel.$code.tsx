@@ -1,5 +1,5 @@
-import { json, type LoaderFunctionArgs } from '@shopify/remix-oxygen';
-import { useLoaderData } from '@remix-run/react';
+import { json, type LoaderFunctionArgs } from 'react-router';
+import { useLoaderData } from 'react-router';
 import { Suspense, useState } from 'react';
 import { FunnelStage } from '~/components/funnel/FunnelStage';
 import { FunnelProgress } from '~/components/funnel/FunnelProgress';
@@ -25,33 +25,59 @@ interface FunnelStageData {
 
 export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const { code } = params;
-  
+
   if (!code) {
     throw new Response('Funnel code required', { status: 400 });
   }
 
-  // Fetch funnel configuration from Shopify metaobjects
+  // Fetch funnel configuration from CMS API
   try {
-    const response = await context.storefront.query(FUNNEL_QUERY, {
-      variables: { handle: code },
-    });
+    const apiUrl = `https://api.wowstore.live/funnels?funnel_code=eq.${code}&select=*,stages:funnel_stages(id,stage_name,stage_type,headline,subheadline,sort_order,config,components:funnel_stage_components(id,sort_order,component:component_library(id,name,slug,component_type,default_props)))`;
 
-    if (!response.metaobject) {
+    const response = await fetch(apiUrl);
+
+    if (!response.ok) {
+      throw new Response('Error fetching funnel from CMS', { status: response.status });
+    }
+
+    const funnels = await response.json();
+
+    if (!funnels || funnels.length === 0) {
       throw new Response('Funnel not found', { status: 404 });
     }
 
-    // Parse metaobject fields into funnel data
-    const fields = response.metaobject.fields.reduce((acc: any, field: any) => {
-      acc[field.key] = field.value;
-      return acc;
-    }, {});
+    const cmsData = funnels[0];
 
+    // Transform CMS data to match expected FunnelData structure
     const funnelData: FunnelData = {
-      id: response.metaobject.id,
-      code,
-      name: fields.name || code,
-      stages: JSON.parse(fields.stages || '[]'),
-      theme: JSON.parse(fields.theme || '{"primaryColor":"#3B82F6","secondaryColor":"#8B5CF6"}'),
+      id: cmsData.id.toString(),
+      code: cmsData.funnel_code,
+      name: cmsData.funnel_name,
+      stages: cmsData.stages
+        .sort((a: any, b: any) => a.sort_order - b.sort_order)
+        .map((stage: any) => ({
+          id: stage.id.toString(),
+          name: stage.stage_name,
+          type: stage.stage_type,
+          headline: stage.headline,
+          subheadline: stage.subheadline,
+          components: stage.components
+            .sort((a: any, b: any) => a.sort_order - b.sort_order)
+            .map((comp: any) => ({
+              slug: comp.component.slug,
+              name: comp.component.name,
+              type: comp.component.component_type,
+              props: comp.component.default_props,
+            })),
+          content: {
+            headline: stage.headline,
+            subheadline: stage.subheadline,
+          },
+        })),
+      theme: {
+        primaryColor: '#3B82F6',
+        secondaryColor: '#8B5CF6',
+      },
     };
 
     return json({ funnel: funnelData });
@@ -102,15 +128,3 @@ function FunnelLoadingSkeleton() {
     </div>
   );
 }
-
-const FUNNEL_QUERY = `#graphql
-  query FunnelByCode($handle: String!) {
-    metaobject(handle: {type: "funnel", handle: $handle}) {
-      id
-      fields {
-        key
-        value
-      }
-    }
-  }
-`;
